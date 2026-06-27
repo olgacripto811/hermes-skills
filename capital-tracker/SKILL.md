@@ -5,27 +5,22 @@ description: >
   Используй когда пользователь пишет: пополнение, вывод, внёс, вывел, инвестор пополнил,
   новая транзакция, движение капитала, баланс инвестора.
   НИКОГДА не спрашивай куда записать. НИКОГДА не имитируй запись.
-  ВСЕГДА выполняй curl ниже с реальными данными.
+  ВСЕГДА используй инструмент terminal для выполнения curl команд.
 ---
 # Движение капитала инвестора
 
 ## Правило
-НИКОГДА не имитируй запись. ВСЕГДА выполняй curl ниже реально в терминале.
+ОБЯЗАТЕЛЬНО используй инструмент **terminal** для каждого curl запроса.
+НИКОГДА не имитируй выполнение. НИКОГДА не пиши результат без реального выполнения.
 
-## Шаги
-1. Извлеки из сообщения: тип (Пополнение/Вывод), сумму, имя инвестора, дату
-2. Получи текущий баланс из Notion (curl запрос ниже)
-3. Рассчитай новый баланс
-4. Запиши в Notion через curl
-5. Подтверди пользователю
+## Шаг 1 — Получить последний баланс (terminal)
 
-## Шаг 1 — Получить последний баланс
+Выполни через terminal:
 
 ```bash
 export NOTION_KEY=$(grep 'NOTION_API_KEY=' ~/.hermes/.env | cut -d= -f2)
 export CAPITAL_DB=$(grep 'CAPITAL_DB_ID=' ~/.hermes/.env | cut -d= -f2)
-
-LAST_BALANCE=$(curl -s -X POST "https://api.notion.com/v1/databases/$CAPITAL_DB/query" \
+curl -s -X POST "https://api.notion.com/v1/databases/$CAPITAL_DB/query" \
   -H "Authorization: Bearer $NOTION_KEY" \
   -H "Notion-Version: 2022-06-28" \
   -H "Content-Type: application/json" \
@@ -39,32 +34,30 @@ if results:
     print(bal if bal is not None else 0)
 else:
     print(0)
-")
-echo "Текущий баланс: $LAST_BALANCE USDT"
+"
 ```
 
-## Шаг 2 — Записать транзакцию
+Сохрани результат как LAST_BALANCE.
+
+## Шаг 2 — Записать транзакцию (terminal)
+
+Подставь реальные значения из сообщения пользователя и выполни через terminal:
 
 ```bash
 export NOTION_KEY=$(grep 'NOTION_API_KEY=' ~/.hermes/.env | cut -d= -f2)
 export CAPITAL_DB=$(grep 'CAPITAL_DB_ID=' ~/.hermes/.env | cut -d= -f2)
+TYPE="Пополнение"
+AMOUNT=1000
+INVESTOR="Иван"
+DATE="2026-06-27"
+NOTE=""
+LAST_BALANCE=0
 
-# Подставь из сообщения пользователя:
-TYPE="Пополнение"       # Пополнение или Вывод
-AMOUNT=1000             # сумма числом
-INVESTOR="Иван"         # имя инвестора
-DATE="2026-06-27"       # дата ISO формат YYYY-MM-DD
-NOTE=""                 # заметка если есть
-LAST_BALANCE=0          # результат из шага 1
-
-# Рассчитай новый баланс
 if [ "$TYPE" = "Пополнение" ]; then
   NEW_BALANCE=$(python3 -c "print($LAST_BALANCE + $AMOUNT)")
 else
   NEW_BALANCE=$(python3 -c "print($LAST_BALANCE - $AMOUNT)")
 fi
-
-# Форматируй дату для названия DD.MM.YYYY
 DATE_DISPLAY=$(date -d "$DATE" +%d.%m.%Y 2>/dev/null || echo "$DATE")
 TITLE="$TYPE $DATE_DISPLAY"
 
@@ -88,14 +81,14 @@ curl -s -X POST https://api.notion.com/v1/pages \
 
 ## Переменные — подставь из сообщения пользователя
 - TYPE — «Пополнение» или «Вывод»
-- AMOUNT — сумма числом без знака (1000, 500)
-- INVESTOR — имя инвестора (если не указан — оставь пустым "")
-- DATE — дата в формате YYYY-MM-DD (если не указана — используй сегодня: $(date +%Y-%m-%d))
-- NOTE — любой дополнительный текст (если нет — "")
+- AMOUNT — сумма числом (1000, 500)
+- INVESTOR — имя (если не указан — "")
+- DATE — дата YYYY-MM-DD (если не указана — $(date +%Y-%m-%d))
+- NOTE — заметка (если нет — "")
 
 ## Ответ после записи
 ✅ Записано в Движение капитала:
-💰 $TYPE: $AMOUNT USDT
+💰 Тип: $TYPE $AMOUNT USDT
 👤 Инвестор: $INVESTOR
 📅 Дата: $DATE_DISPLAY
 📊 Баланс после: $NEW_BALANCE USDT
